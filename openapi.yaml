@@ -1,0 +1,185 @@
+openapi: 3.0.3
+
+info:
+  title: Order API
+  version: 1.0.0
+  description: API for retrieving, filtering, and creating customer orders.
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /api/orders:
+    get:
+      summary: Get or filter orders
+      description: Retrieves all orders, optionally filtered by status and limited by the number of results returned.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filters orders by status.
+          schema:
+            type: string
+            enum:
+              - processing
+              - shipped
+              - cancelled
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of orders to return. Defaults to 20.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Orders were retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "400":
+          description: A query parameter is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidStatus:
+                  summary: Invalid status
+                  value:
+                    error: Invalid status
+                invalidLimit:
+                  summary: Invalid limit
+                  value:
+                    error: limit must be an integer between 1 and 100
+
+    post:
+      summary: Create an order
+      description: Creates a new order after validating the customer name and order total.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewOrder"
+            examples:
+              validOrder:
+                summary: Valid order
+                value:
+                  customer: Zack Aung
+                  total: 27.50
+      responses:
+        "201":
+          description: The order was created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: The request contains missing or invalid fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidCustomer:
+                  summary: Invalid customer
+                  value:
+                    error: customer must be a non-empty string
+                invalidTotal:
+                  summary: Invalid total
+                  value:
+                    error: total must be a number greater than 0
+
+  /api/orders/{id}:
+    get:
+      summary: Get an order by ID
+      description: Retrieves a single order by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique ID of the order to retrieve.
+          schema:
+            type: string
+          example: "1001"
+      responses:
+        "200":
+          description: The requested order was retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: No order exists with the specified ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Order not found
+
+components:
+  schemas:
+    Order:
+      type: object
+      required:
+        - id
+        - customer
+        - status
+        - total
+      properties:
+        id:
+          type: string
+          description: The unique ID of the order.
+          example: "1001"
+        customer:
+          type: string
+          description: Name of the customer.
+          example: Alex Lee
+        status:
+          type: string
+          description: Current status of the order.
+          enum:
+            - processing
+            - shipped
+            - cancelled
+          example: shipped
+        total:
+          type: number
+          format: double
+          description: Total value of the order.
+          example: 42.50
+
+    NewOrder:
+      type: object
+      required:
+        - customer
+        - total
+      properties:
+        customer:
+          type: string
+          description: Name of the customer. Must be a non-empty string.
+          example: Zack Aung
+        total:
+          type: number
+          format: double
+          description: Total value of the order. Must be greater than 0.
+          minimum: 0
+          exclusiveMinimum: true
+          example: 27.50
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Description of the error.
+          example: Order not found
